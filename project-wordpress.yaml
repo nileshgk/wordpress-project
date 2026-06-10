@@ -1,0 +1,105 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Decoupled WordPress Stack using EC2 and Amazon RDS.
+
+Parameters:
+  EnvironmentType:
+    Type: String
+    Default: dev
+    AllowedValues: [prod, dev]
+    Description: Select 'prod' for live blog or 'dev' for testing.
+
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+    AllowedValues: [db.t2.micro, db.t3.micro]
+    Description: DB Instance size. Both are Free-Tier eligible.
+
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64'
+
+Resources:
+  WebServerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP and SSH
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  DatabaseSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Open database port 3306 exclusively to web server
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref WebServerSG
+
+  WordPressDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: '20'
+      DBInstanceClass: !Ref DBInstanceClass
+      DBInstanceIdentifier: !Sub "wp-db-${EnvironmentType}"
+      DBName: wordpressdb
+      Engine: mariadb
+      EngineVersion: '10.11'
+      MasterUsername: wpadmin
+      MasterUserPassword: SecurePassword123!
+      VPCSecurityGroups:
+        - !GetAtt DatabaseSG.GroupId
+      PubliclyAccessible: true
+      Tags:
+        - Key: Name
+          Value: !Sub "wp-db-${EnvironmentType}"
+
+  WordPressInstance:
+    Type: AWS::EC2::Instance
+    DependsOn: WordPressDB
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: t2.micro
+      SecurityGroupIds:
+        - !Ref WebServerSG
+      Tags:
+        - Key: Name
+          Value: !Sub "wp-web-${EnvironmentType}"
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          dnf update -y
+          dnf install -y httpd php php-mysqlnd php-gd php-xml php-intl php-mbstring
+          systemctl start httpd
+          systemctl enable httpd
+          
+          wget https://wordpress.org/latest.tar.gz
+          tar -xzf latest.tar.gz
+          cp -r wordpress/* /var/www/html/
+          
+          cd /var/www/html/
+          cp wp-config-sample.php wp-config.php
+          sed -i "s/database_name_here/wordpressdb/g" wp-config.php
+          sed -i "s/username_here/wpadmin/g" wp-config.php
+          sed -i "s/password_here/SecurePassword123!/g" wp-config.php
+          sed -i "s/localhost/${WordPressDB.Endpoint.Address}/g" wp-config.php
+          
+          chown -R apache:apache /var/www/html/
+          chmod -R 755 /var/www/html/
+          systemctl restart httpd
+
+Outputs:
+  WordPressURL:
+    Description: URL to access WordPress site
+    Value: !Sub "http://${WordPressInstance.PublicIp}"
+  EC2InstanceId:
+    Value: !Ref WordPressInstance
+  RDSInstanceId:
+    Value: !Ref WordPressDB
