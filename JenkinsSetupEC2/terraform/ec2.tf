@@ -31,7 +31,10 @@ resource "aws_instance" "jenkins" {
     aws_security_group.jenkins.id
   ]
 
+  iam_instance_profile = aws_iam_instance_profile.jenkins_profile.name
+  
   user_data = file("${path.module}/../scripts/install_jenkins.sh")
+
 
   root_block_device {
 
@@ -63,4 +66,21 @@ resource "aws_instance" "jenkins" {
 
   }
 
+}
+#########################################
+# Attach AdministratorAccess
+#########################################
+
+resource "aws_iam_role_policy_attachment" "admin_policy" {
+  role       = aws_iam_role.jenkins_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
+#########################################
+# Instance Profile
+#########################################
+
+resource "aws_iam_instance_profile" "jenkins_profile" {
+  name = "jenkins-instance-profile"
+  role = aws_iam_role.jenkins_role.name
 }

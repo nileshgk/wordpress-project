@@ -104,15 +104,29 @@ echo "======================================"
 
 apt install -y docker.io
 
+#Install Docker Compose plugin
+apt install -y docker-compose-v2
+
 systemctl enable docker
 systemctl start docker
 
 # Allow Jenkins and Ubuntu user to use Docker
+groupadd -f docker
 usermod -aG docker jenkins
+usermod -aG docker ubuntu
 usermod -aG docker ubuntu
 
 # Verify Docker
 docker --version
+
+#############################################
+# Install Python Packages
+#############################################
+
+apt install -y \
+python3 \
+python3-pip \
+python3-venv
 
 #############################################
 # Install Terraform
@@ -142,13 +156,47 @@ apt install -y ansible
 ansible --version
 
 #############################################
-# Install AWS CLI
+# Install AWS CLI v2
 #############################################
 
-apt install -y awscli
+cd /tmp
 
-# Verify AWS CLI
+curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+
+unzip -oq awscliv2.zip
+
+./aws/install --update
+
+rm -rf aws awscliv2.zip
+
 aws --version
+
+type -p curl >/dev/null || apt install curl -y
+
+curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+| dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+
+chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+| tee /etc/apt/sources.list.d/github-cli.list
+
+apt update
+
+apt install gh -y
+
+JENKINS_PLUGIN_CLI=/usr/lib/jenkins-plugin-manager.jar
+
+java -jar $JENKINS_PLUGIN_CLI \
+  --plugins \
+  git \
+  github \
+  pipeline-stage-view \
+  workflow-aggregator \
+  terraform \
+  ansible \
+  docker-workflow \
+  blueocean
 
 #############################################
 # Restart Jenkins
@@ -194,3 +242,11 @@ aws --version
 echo "========================================"
 
 echo "Jenkins Server Setup Completed Successfully"
+
+#############################################
+# Jenkins Passwordless Sudo
+#############################################
+
+echo "jenkins ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/jenkins
+
+chmod 440 /etc/sudoers.d/jenkins
