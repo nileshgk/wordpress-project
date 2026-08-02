@@ -21,6 +21,26 @@ pipeline {
             }
         }
 
+        stage('Debug Terraform') {
+            steps {
+                dir('terraform') {
+                    sh '''
+                    echo "Current Directory:"
+                    pwd
+
+                    echo "Files:"
+                    ls -lah
+
+                    echo "Terraform Files:"
+                    find . -name "*.tf"
+
+                    echo "Terraform Version:"
+                    terraform version
+                    '''
+                }
+            }
+        }
+
         stage('Check Tool Versions') {
             steps {
                 sh '''
@@ -49,7 +69,11 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 dir('terraform') {
-                    sh 'terraform init'
+                    sh '''
+                    rm -rf .terraform
+                    rm -f .terraform.lock.hcl
+                    terraform init -reconfigure
+                    '''
                 }
             }
         }
@@ -61,11 +85,25 @@ pipeline {
                 }
             }
         }
-
+        
         stage('Terraform Plan') {
             steps {
-                dir('terraform') {
-                    sh 'terraform plan -out=tfplan'
+                dir("${WORKSPACE}/terraform") {
+                    sh '''
+                    echo "===== WORKSPACE ====="
+                    echo $WORKSPACE
+
+                    echo "===== CURRENT DIRECTORY ====="
+                    pwd
+
+                    echo "===== FILES ====="
+                    ls -lah
+
+                    echo "===== TERRAFORM FILES ====="
+                    find . -maxdepth 1 -name "*.tf"
+
+                    terraform plan -out=tfplan
+                    '''
                 }
             }
         }
@@ -212,11 +250,11 @@ pipeline {
 
         }
 
-        always {
+        //always {
 
-            cleanWs()
+        //    cleanWs()
 
-        }
+        //}
 
     }
 
