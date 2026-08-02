@@ -7,6 +7,14 @@
 - Docker installed
 - AWS CLI configured
 
+
+Jenkins plugins to install
+Manage Jenkins
+    ↓
+Plugins
+    ↓
+Available Plugins: AnsiColor
+
 # WordPress DevOps Automation using Terraform, Jenkins, Ansible & Docker
 
 ## Project Overview

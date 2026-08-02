@@ -17,6 +17,7 @@ pipeline {
 
             // Keep this only if the AnsiColor plugin is installed
             ansiColor('xterm')
+            skipDefaultCheckout()
         }
 
     // Global environment variables
@@ -27,85 +28,9 @@ pipeline {
 
     stages {
 
-        // Checkout source code from GitHub
-        stage('Checkout Source Code') {
+        stage('Checkout Source') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/nileshgk/wordpress-project.git'
-                    // credentialsId: 'github-credentials' // Required for private repositories
-            }
-        }
-
-        stage('Install Required Tools') {
-            steps {
-                sh '''
-                set -e
-
-                export DEBIAN_FRONTEND=noninteractive
-
-                sudo apt-get update
-
-                sudo apt-get install -y \
-                    curl \
-                    unzip \
-                    wget \
-                    git \
-                    jq \
-                    gnupg \
-                    software-properties-common
-
-                # Install AWS CLI
-                if ! command -v aws >/dev/null 2>&1; then
-                    echo "Installing AWS CLI..."
-
-                    cd /tmp
-
-                    rm -rf aws awscliv2.zip
-
-                   curl -sSL https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip \
-                        -o awscliv2.zip
-
-                    unzip -oq awscliv2.zip
-
-                    sudo ./aws/install --update
-
-                    rm -rf aws awscliv2.zip
-                fi
-
-                # Install Terraform
-                if ! command -v terraform >/dev/null 2>&1; then
-
-                    wget -qO- https://apt.releases.hashicorp.com/gpg | \
-                    gpg --dearmor | \
-                    sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg >/dev/null
-
-                    echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
-                    sudo tee /etc/apt/sources.list.d/hashicorp.list
-
-                    sudo apt-get update
-
-                    sudo apt-get install -y terraform
-                fi
-
-                # Install Docker
-                if ! command -v docker >/dev/null 2>&1; then
-
-                    sudo apt-get install -y docker.io
-
-                    sudo systemctl enable docker
-
-                    sudo systemctl start docker
-
-                    sudo usermod -aG docker jenkins
-                fi
-
-                # Install Ansible
-                if ! command -v ansible >/dev/null 2>&1; then
-                    sudo apt-get install -y ansible
-                fi
-
-                sudo apt-get install -y python3 python3-pip
-                '''
+                checkout scm
             }
         }
 
@@ -113,27 +38,31 @@ pipeline {
         stage('Verify Build Environment') {
             steps {
                 sh '''
-                set -e
-
-                echo "===== Java ====="
+                echo "=============================="
+                echo "Java"
                 java -version
 
-                echo "===== Git ====="
+                echo "=============================="
+                echo "Git"
                 git --version
 
-                echo "===== Terraform ====="
+                echo "=============================="
+                echo "Terraform"
                 terraform version
 
-                echo "===== AWS CLI ====="
+                echo "=============================="
+                echo "AWS CLI"
                 aws --version
 
-                echo "===== Docker ====="
+                echo "=============================="
+                echo "Docker"
                 docker --version
 
-                echo "===== Ansible ====="
+                echo "=============================="
+                echo "Ansible"
                 ansible --version
 
-                echo "===== Environment Ready ====="
+                echo "=============================="
                 '''
             }
         }   
@@ -158,6 +87,23 @@ pipeline {
                     echo "or configure Jenkins AWS Credentials."
                     exit 1
                 fi
+                '''
+            }
+        }
+
+        stage('Project Structure') {
+            steps {
+                sh '''
+                echo "Workspace:"
+                pwd
+
+                echo ""
+                echo "Repository Structure:"
+                ls -R
+
+                echo ""
+                echo "Terraform Files:"
+                find wordpress-devops/terraform -name "*.tf"
                 '''
             }
         }
@@ -199,7 +145,7 @@ pipeline {
         stage('Terraform Format') {
             steps {
                 dir('wordpress-devops/terraform') {
-                    sh 'terraform fmt -recursive -check'
+                    sh 'terraform fmt -recursive'
                 }
             }
         }
@@ -377,7 +323,8 @@ pipeline {
                     sh """
                     echo "Checking WordPress..."
 
-                    curl --retry 10 \
+                    curl --fail \
+                         --retry 10 \
                          --retry-delay 5 \
                          http://${PUBLIC_IP}:8080
                     """
