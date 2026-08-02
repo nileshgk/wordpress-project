@@ -7,7 +7,6 @@
 - Docker installed
 - AWS CLI configured
 
-
 Jenkins plugins to install
 Manage Jenkins
     ↓
