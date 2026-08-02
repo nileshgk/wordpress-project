@@ -1,0 +1,26 @@
+---
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install Docker Packages
+  apt:
+    name: "{{ docker_packages }}"
+    state: present
+
+- name: Install Docker Python SDK
+  pip:
+    name: docker
+
+- name: Enable Docker
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Add Ubuntu User to Docker Group
+  user:
+    name: ubuntu
+    groups: docker
+    append: yes

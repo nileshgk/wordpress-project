@@ -1,0 +1,10 @@
+---
+- name: Configure WordPress Server
+  hosts: wordpress
+
+  become: yes
+
+  roles:
+    - docker
+    - wordpress
+    - nginx

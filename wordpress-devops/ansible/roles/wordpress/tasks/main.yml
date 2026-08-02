@@ -1,0 +1,25 @@
+---
+
+- name: Create Application Directory
+
+  file:
+
+    path: /opt/wordpress
+
+    state: directory
+
+- name: Copy Docker Compose File
+
+  template:
+
+    src: docker-compose.yml.j2
+
+    dest: /opt/wordpress/docker-compose.yml
+
+- name: Start WordPress
+
+  community.docker.docker_compose_v2:
+
+    project_src: /opt/wordpress
+
+    state: present

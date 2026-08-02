@@ -1,0 +1,223 @@
+pipeline {
+
+    agent any
+
+    options {
+        timestamps()
+        ansiColor('xterm')
+    }
+
+    environment {
+        AWS_DEFAULT_REGION = 'us-east-1'
+    }
+
+    stages {
+
+        stage('Checkout Source Code') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/nileshgk/wordpress-project.git'
+                    // credentialsId: 'github-credentials'   // Uncomment if repository is private
+            }
+        }
+
+        stage('Check Tool Versions') {
+            steps {
+                sh '''
+                echo "===== Terraform Version ====="
+                terraform version
+
+                echo ""
+                echo "===== Ansible Version ====="
+                ansible --version
+
+                echo ""
+                echo "===== Docker Version ====="
+                docker --version
+                '''
+            }
+        }
+
+        stage('Terraform Format Check') {
+            steps {
+                dir('terraform') {
+                    sh 'terraform fmt -check'
+                }
+            }
+        }
+
+        stage('Terraform Init') {
+            steps {
+                dir('terraform') {
+                    sh 'terraform init'
+                }
+            }
+        }
+
+        stage('Terraform Validate') {
+            steps {
+                dir('terraform') {
+                    sh 'terraform validate'
+                }
+            }
+        }
+
+        stage('Terraform Plan') {
+            steps {
+                dir('terraform') {
+                    sh 'terraform plan -out=tfplan'
+                }
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                dir('terraform') {
+                    sh 'terraform apply -auto-approve tfplan'
+                }
+            }
+        }
+
+        stage('Terraform Output') {
+            steps {
+                dir('terraform') {
+                    sh 'terraform output'
+                }
+            }
+        }
+
+        stage('Wait For EC2') {
+            steps {
+                echo "Waiting for EC2 initialization..."
+                sleep(time: 60, unit: 'SECONDS')
+            }
+        }
+
+        stage('Generate Inventory') {
+            steps {
+                sh 'chmod +x scripts/generate_inventory.sh'
+                sh './scripts/generate_inventory.sh'
+            }
+        }
+
+        stage('Verify Inventory') {
+            steps {
+                sh '''
+                echo "Generated Inventory:"
+                cat ansible/inventory
+                '''
+            }
+        }
+
+        stage('Ping EC2') {
+            steps {
+                dir('ansible') {
+                    sh '''
+                    ansible wordpress \
+                    -m ping \
+                    -v
+                    '''
+                }
+            }
+        }
+
+        stage('Install Ansible Collection') {
+            steps {
+                sh '''
+                ansible-galaxy collection install community.docker --force
+                '''
+            }
+        }
+
+        stage('Deploy WordPress') {
+            steps {
+
+                withCredentials([
+                    string(credentialsId: 'mysql-password', variable: 'MYSQL_PASSWORD'),
+                    string(credentialsId: 'mysql-root-password', variable: 'MYSQL_ROOT_PASSWORD')
+                ]) {
+
+                    dir('ansible') {
+
+                        sh '''
+                        ansible-playbook playbook.yml \
+                        -e mysql_password=$MYSQL_PASSWORD \
+                        -e mysql_root_password=$MYSQL_ROOT_PASSWORD \
+                        -v
+                        '''
+
+                    }
+
+                }
+
+            }
+        }
+
+        stage('Verify Containers') {
+            steps {
+                dir('ansible') {
+                    sh '''
+                    ansible wordpress \
+                    -a "docker ps"
+                    '''
+                }
+            }
+        }
+
+        stage('Application Health Check') {
+            steps {
+
+                script {
+
+                    def PUBLIC_IP = sh(
+                        script: "terraform -chdir=terraform output -raw public_ip",
+                        returnStdout: true
+                    ).trim()
+
+                    sh """
+                    echo "Checking WordPress..."
+
+                    curl --retry 10 \
+                         --retry-delay 5 \
+                         http://${PUBLIC_IP}:8080
+                    """
+
+                }
+
+            }
+        }
+
+    }
+
+    post {
+
+        success {
+
+            echo '''
+=========================================
+ WordPress Deployment Successful
+=========================================
+'''
+
+        }
+
+        failure {
+
+            echo '''
+=========================================
+ WordPress Deployment Failed
+ Check Jenkins Console Output
+=========================================
+'''
+
+        }
+
+        always {
+
+            cleanWs()
+
+        }
+
+    }
+
+}
