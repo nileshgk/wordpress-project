@@ -1,14 +1,23 @@
 #!/bin/bash
 
-# Exit if any command fails
-set -e
+# Exit on error, undefined variables and pipeline failures
+set -euxo pipefail
 
-# Update Ubuntu packages
-apt-get update -y
-apt-get upgrade -y
+# Save installation logs
+exec > >(tee /var/log/install_jenkins.log) 2>&1
 
-# Install common packages
-apt-get install -y \
+#############################################
+# Update Ubuntu Packages
+#############################################
+
+apt update -y
+apt upgrade -y
+
+#############################################
+# Install Required Packages
+#############################################
+
+apt install -y \
     git \
     curl \
     unzip \
@@ -16,75 +25,75 @@ apt-get install -y \
     gnupg \
     software-properties-common \
     apt-transport-https \
-    ca-certificates
+    ca-certificates \
+    fontconfig
 
-# Install Java 21
-apt-get install -y openjdk-21-jdk
+#############################################
+# Install Java 21 (JDK)
+#############################################
 
+apt install -y openjdk-21-jdk
+
+# Verify Java Installation
+java -version
+
+#############################################
+# Create APT Keyring Directory
+#############################################
+
+mkdir -p /etc/apt/keyrings
+
+#############################################
+# Download Jenkins GPG Key
+#############################################
+# Download Jenkins GPG Key (2026)
+wget -O /etc/apt/keyrings/jenkins-keyring.asc \
+https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+
+#############################################
+# Add Jenkins Repository
+#############################################
+
+echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" | \
+tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+
+#############################################
+# Update Package Index
+#############################################
+
+apt update -y
+
+#############################################
 # Install Jenkins
-wget -O /usr/share/keyrings/jenkins-keyring.asc \
-https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+#############################################
 
-echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
-https://pkg.jenkins.io/debian-stable binary/" \
-> /etc/apt/sources.list.d/jenkins.list
+apt install -y jenkins
 
-apt-get update -y
-apt-get install -y jenkins
+#############################################
+# Enable & Start Jenkins
+#############################################
 
-# Enable Jenkins
 systemctl enable jenkins
 systemctl start jenkins
 
-# Install Docker
-apt-get install -y docker.io
+#############################################
+# Verify Jenkins Status
+#############################################
 
-systemctl enable docker
-systemctl start docker
+systemctl status jenkins --no-pager
 
-# Allow Jenkins to use Docker
-usermod -aG docker jenkins
-usermod -aG docker ubuntu
+#############################################
+# Display Installed Versions
+#############################################
 
-# Install Docker Compose Plugin
-apt-get install -y docker-compose-v2
-
-# Install AWS CLI v2
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
--o "awscliv2.zip"
-
-unzip awscliv2.zip
-
-./aws/install
-
-# Install Terraform
-wget -O- https://apt.releases.hashicorp.com/gpg | \
-gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-
-echo \
-"deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] \
-https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
-> /etc/apt/sources.list.d/hashicorp.list
-
-apt-get update -y
-
-apt-get install -y terraform
-
-# Install Ansible
-add-apt-repository --yes ppa:ansible/ansible
-
-apt-get update -y
-
-apt-get install -y ansible
-
-# Restart Jenkins
-systemctl restart jenkins
-
-# Display versions
+echo "======================================"
+echo "Java Version"
 java -version
+
+echo "======================================"
+echo "Jenkins Version"
 jenkins --version || true
-docker --version
-terraform version
-ansible --version
-aws --version
-git --version
+
+echo "======================================"
+echo "Jenkins Installation Completed"
+echo "======================================"
