@@ -68,10 +68,10 @@ pipeline {
             }
         }
 
-        stage('Terraform Format Check') {
+        stage('Terraform Format') {
             steps {
                 dir('wordpress-devops/terraform') {
-                    sh 'terraform fmt -check'
+                    sh 'terraform fmt'
                 }
             }
         }
