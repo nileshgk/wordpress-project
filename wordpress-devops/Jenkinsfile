@@ -1,25 +1,76 @@
 pipeline {
 
+    // Execute pipeline on any available Jenkins agent
     agent any
 
+    // Global pipeline options
     options {
-        timestamps()
-        ansiColor('xterm')
+        timestamps()              // Add timestamps to console output
+        ansiColor('xterm')        // Enable ANSI color support
     }
 
+    // Global environment variables
     environment {
         AWS_DEFAULT_REGION = 'us-east-1'
     }
 
     stages {
 
+        // Checkout source code from GitHub
         stage('Checkout Source Code') {
             steps {
                 git branch: 'main',
                     url: 'https://github.com/nileshgk/wordpress-project.git'
-                    // credentialsId: 'github-credentials'   // Uncomment if repository is private
+                    // credentialsId: 'github-credentials' // Required for private repositories
             }
         }
+
+        // Verify all required DevOps tools are installed
+        stage('Verify Build Environment') {
+            steps {
+                sh '''
+                set -e
+
+                echo "===== Java ====="
+                java -version
+
+                echo "===== Git ====="
+                git --version
+
+                echo "===== Terraform ====="
+                terraform version
+
+                echo "===== AWS CLI ====="
+                aws --version
+
+                echo "===== Docker ====="
+                docker --version
+
+                echo "===== Ansible ====="
+                ansible --version
+
+                echo "===== Environment Ready ====="
+                '''
+            }
+        }
+
+        // Validate AWS authentication using IAM Role or configured credentials
+        stage('Validate AWS Credentials') {
+            steps {
+                sh '''
+                echo "======================================="
+                echo " Validating AWS Credentials"
+                echo "======================================="
+
+                aws --version
+                aws sts get-caller-identity
+
+                echo "AWS Credentials Verified"
+                '''
+            }
+        }
+
+        // Display Jenkins workspace structure (Debug stage)
         stage('Debug Workspace') {
             steps {
                 sh '''
@@ -31,6 +82,7 @@ pipeline {
             }
         }
 
+        // Display Terraform directory contents (Debug stage)
         stage('Debug Terraform') {
             steps {
                 dir('wordpress-devops/terraform') {
@@ -51,43 +103,29 @@ pipeline {
             }
         }
 
-        stage('Check Tool Versions') {
-            steps {
-                sh '''
-                echo "===== Terraform Version ====="
-                terraform version
-
-                echo ""
-                echo "===== Ansible Version ====="
-                ansible --version
-
-                echo ""
-                echo "===== Docker Version ====="
-                docker --version
-                '''
-            }
-        }
-
+        // Check Terraform code formatting
         stage('Terraform Format') {
             steps {
                 dir('wordpress-devops/terraform') {
-                    sh 'terraform fmt'
+                    sh 'terraform fmt -recursive -check'
                 }
             }
         }
 
+        // Initialize Terraform providers and backend
         stage('Terraform Init') {
             steps {
                 dir('wordpress-devops/terraform') {
                     sh '''
-                    rm -rf .terraform
-                    rm -f .terraform.lock.hcl
-                    terraform init -reconfigure
+                    terraform init \
+                        -reconfigure \
+                        -input=false
                     '''
                 }
             }
         }
 
+        // Validate Terraform configuration
         stage('Terraform Validate') {
             steps {
                 dir('wordpress-devops/terraform') {
@@ -95,7 +133,8 @@ pipeline {
                 }
             }
         }
-        
+
+        // Generate Terraform execution plan
         stage('Terraform Plan') {
             steps {
                 dir("${WORKSPACE}/wordpress-devops/terraform") {
@@ -112,20 +151,29 @@ pipeline {
                     echo "===== TERRAFORM FILES ====="
                     find . -maxdepth 1 -name "*.tf"
 
-                    terraform plan -out=tfplan
+                    terraform plan \
+                        -input=false \
+                        -out=tfplan
                     '''
                 }
             }
         }
 
+        // Create AWS infrastructure
         stage('Terraform Apply') {
             steps {
                 dir('wordpress-devops/terraform') {
-                    sh 'terraform apply -auto-approve tfplan'
+                    sh '''
+                    terraform apply \
+                        -input=false \
+                        -auto-approve \
+                        tfplan
+                    '''
                 }
             }
         }
 
+        // Display Terraform outputs (Public IP, etc.)
         stage('Terraform Output') {
             steps {
                 dir('wordpress-devops/terraform') {
@@ -134,6 +182,7 @@ pipeline {
             }
         }
 
+        // Wait for EC2 instance to finish initialization
         stage('Wait For EC2') {
             steps {
                 echo "Waiting for EC2 initialization..."
@@ -141,22 +190,29 @@ pipeline {
             }
         }
 
+        // Generate dynamic Ansible inventory from Terraform output
         stage('Generate Inventory') {
             steps {
-                sh 'chmod +x scripts/generate_inventory.sh'
-                sh './scripts/generate_inventory.sh'
+                dir('wordpress-devops') {
+                    sh 'chmod +x scripts/generate_inventory.sh'
+                    sh './scripts/generate_inventory.sh'
+                }
             }
         }
 
+        // Verify generated inventory file
         stage('Verify Inventory') {
             steps {
-                sh '''
-                echo "Generated Inventory:"
-                cat ansible/inventory
-                '''
+                dir('wordpress-devops') {
+                    sh '''
+                    echo "Generated Inventory:"
+                    cat ansible/inventory
+                    '''
+                }
             }
         }
 
+        // Test SSH connectivity to EC2
         stage('Ping EC2') {
             steps {
                 dir('wordpress-devops/ansible') {
@@ -169,6 +225,7 @@ pipeline {
             }
         }
 
+        // Install required Ansible Galaxy collection
         stage('Install Ansible Collection') {
             steps {
                 sh '''
@@ -177,6 +234,7 @@ pipeline {
             }
         }
 
+        // Deploy Dockerized WordPress and MySQL using Ansible
         stage('Deploy WordPress') {
             steps {
 
@@ -201,6 +259,7 @@ pipeline {
             }
         }
 
+        // Verify Docker containers are running
         stage('Verify Containers') {
             steps {
                 dir('wordpress-devops/ansible') {
@@ -212,13 +271,14 @@ pipeline {
             }
         }
 
+        // Perform application health check
         stage('Application Health Check') {
             steps {
 
                 script {
 
                     def PUBLIC_IP = sh(
-                        script: "terraform -chdir=terraform output -raw public_ip",
+                        script: "terraform -chdir=wordpress-devops/terraform output -raw public_ip",
                         returnStdout: true
                     ).trim()
 
@@ -237,8 +297,10 @@ pipeline {
 
     }
 
+    // Execute after pipeline completion
     post {
 
+        // Executed when all stages succeed
         success {
 
             echo '''
@@ -249,6 +311,7 @@ pipeline {
 
         }
 
+        // Executed when any stage fails
         failure {
 
             echo '''
@@ -260,6 +323,7 @@ pipeline {
 
         }
 
+        // Always clean workspace after execution
         always {
 
             cleanWs()
