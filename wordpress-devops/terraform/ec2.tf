@@ -1,9 +1,3 @@
-# Upload SSH public key to AWS
-resource "aws_key_pair" "wordpress" {
-  key_name   = var.key_name
-  public_key = file(var.public_key_path)
-}
-
 # Create EC2 instance
 resource "aws_instance" "wordpress" {
 
