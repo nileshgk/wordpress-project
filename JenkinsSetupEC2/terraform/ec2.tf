@@ -18,10 +18,10 @@ resource "aws_key_pair" "jenkins" {
 # Jenkins EC2 Instance
 resource "aws_instance" "jenkins" {
 
-  ami                    = data.aws_ami.ubuntu.id
-  instance_type          = var.instance_type
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = var.instance_type
 
-  subnet_id              = aws_subnet.public.id
+  subnet_id = aws_subnet.public.id
 
   associate_public_ip_address = true
 

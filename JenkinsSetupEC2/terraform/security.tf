@@ -1,6 +1,6 @@
 resource "aws_security_group" "jenkins" {
 
-  name        = "jenkins-sg"
+  name = "jenkins-sg"
 
   description = "Allow Jenkins traffic"
 
