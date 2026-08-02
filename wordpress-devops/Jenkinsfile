@@ -3,6 +3,12 @@ pipeline {
     // Execute pipeline on any available Jenkins agent
     agent any
 
+    // Trigger pipeline automatically on GitHub push
+    triggers {
+        githubPush()
+    }
+
+
     // Global pipeline options
     options {
             timestamps()
