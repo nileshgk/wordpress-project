@@ -20,10 +20,20 @@ pipeline {
                     // credentialsId: 'github-credentials'   // Uncomment if repository is private
             }
         }
+        stage('Debug Workspace') {
+            steps {
+                sh '''
+                pwd
+
+                echo "===== Workspace ====="
+                ls -R
+                '''
+            }
+        }
 
         stage('Debug Terraform') {
             steps {
-                dir('terraform') {
+                dir('wordpress-devops/terraform') {
                     sh '''
                     echo "Current Directory:"
                     pwd
@@ -60,7 +70,7 @@ pipeline {
 
         stage('Terraform Format Check') {
             steps {
-                dir('terraform') {
+                dir('wordpress-devops/terraform') {
                     sh 'terraform fmt -check'
                 }
             }
@@ -68,7 +78,7 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-                dir('terraform') {
+                dir('wordpress-devops/terraform') {
                     sh '''
                     rm -rf .terraform
                     rm -f .terraform.lock.hcl
@@ -80,7 +90,7 @@ pipeline {
 
         stage('Terraform Validate') {
             steps {
-                dir('terraform') {
+                dir('wordpress-devops/terraform') {
                     sh 'terraform validate'
                 }
             }
@@ -88,7 +98,7 @@ pipeline {
         
         stage('Terraform Plan') {
             steps {
-                dir("${WORKSPACE}/terraform") {
+                dir("${WORKSPACE}/wordpress-devops/terraform") {
                     sh '''
                     echo "===== WORKSPACE ====="
                     echo $WORKSPACE
@@ -110,7 +120,7 @@ pipeline {
 
         stage('Terraform Apply') {
             steps {
-                dir('terraform') {
+                dir('wordpress-devops/terraform') {
                     sh 'terraform apply -auto-approve tfplan'
                 }
             }
@@ -118,7 +128,7 @@ pipeline {
 
         stage('Terraform Output') {
             steps {
-                dir('terraform') {
+                dir('wordpress-devops/terraform') {
                     sh 'terraform output'
                 }
             }
@@ -149,7 +159,7 @@ pipeline {
 
         stage('Ping EC2') {
             steps {
-                dir('ansible') {
+                dir('wordpress-devops/ansible') {
                     sh '''
                     ansible wordpress \
                     -m ping \
@@ -175,7 +185,7 @@ pipeline {
                     string(credentialsId: 'mysql-root-password', variable: 'MYSQL_ROOT_PASSWORD')
                 ]) {
 
-                    dir('ansible') {
+                    dir('wordpress-devops/ansible') {
 
                         sh '''
                         ansible-playbook playbook.yml \
@@ -193,7 +203,7 @@ pipeline {
 
         stage('Verify Containers') {
             steps {
-                dir('ansible') {
+                dir('wordpress-devops/ansible') {
                     sh '''
                     ansible wordpress \
                     -a "docker ps"
@@ -250,11 +260,11 @@ pipeline {
 
         }
 
-        //always {
+        always {
 
-        //    cleanWs()
+            cleanWs()
 
-        //}
+        }
 
     }
 
