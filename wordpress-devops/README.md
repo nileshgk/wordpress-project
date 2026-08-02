@@ -13,7 +13,16 @@ Manage Jenkins
     ↓
 Plugins
     ↓
-Available Plugins: AnsiColor
+Available Plugins: 
+Install:
+✅ AnsiColor
+✅ GitHub Integration Plugin
+✅ Git Plugin
+✅ Pipeline Plugin
+✅ Git
+✅ Docker Pipeline
+✅ SSH Agent
+✅ Terraform
 
 # WordPress DevOps Automation using Terraform, Jenkins, Ansible & Docker
 
