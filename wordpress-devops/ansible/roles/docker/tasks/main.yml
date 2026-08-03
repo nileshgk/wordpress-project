@@ -38,7 +38,17 @@
   ansible.builtin.apt:
     update_cache: yes
 
-
+- name: Remove conflicting Ubuntu Docker packages
+  ansible.builtin.apt:
+    name:
+      - docker.io
+      - docker-compose-v2
+      - docker-compose
+      - containerd
+      - runc
+    state: absent
+    purge: yes
+    
 - name: Install Docker Engine and Docker Compose
   ansible.builtin.apt:
     name:
