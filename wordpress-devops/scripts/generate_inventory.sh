@@ -23,7 +23,10 @@ fi
 # Generate inventory file
 cat > ansible/inventory <<EOF
 [wordpress]
-$IP ansible_user=ubuntu ansible_ssh_private_key_file=../terraform/keys/wordpress-key
+$IP
+
+[wordpress:vars]
+ansible_user=ubuntu
 EOF
 
 echo "Inventory generated successfully."
