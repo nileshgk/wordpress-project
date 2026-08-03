@@ -16,7 +16,7 @@ variable "project_name" {
 variable "instance_type" {
   description = "EC2 Instance Type"
   type        = string
-  default     = "t3.micro"
+  default     = "t3.small"
 }
 
 # Root Volume Size

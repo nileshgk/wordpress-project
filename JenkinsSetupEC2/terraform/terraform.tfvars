@@ -2,7 +2,7 @@ aws_region = "us-east-1"
 
 project_name = "jenkins-terraform-aws"
 
-instance_type = "t3.micro"
+instance_type = "t3.small"
 
 volume_size = 30
 
