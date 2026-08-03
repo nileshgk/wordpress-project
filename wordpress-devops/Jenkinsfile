@@ -284,6 +284,9 @@ pipeline {
                     dir('wordpress-devops/ansible') {
                         sshagent(credentials: ['wordpress-ssh-key']) {
                             sh '''
+                            pwd
+                            ls -la
+                            find . -name wordpress.pem
                             chmod 600 terraform/keys/wordpress.pem
                             ansible-playbook playbook.yml \
                             -e mysql_password=$MYSQL_PASSWORD \
