@@ -21,7 +21,11 @@ apt install -y \
     git \
     curl \
     unzip \
+    zip \
     wget \
+    jq \
+    tree \
+    vim \
     gnupg \
     software-properties-common \
     apt-transport-https \
@@ -73,8 +77,7 @@ apt install -y jenkins
 # Enable & Start Jenkins
 #############################################
 
-systemctl enable jenkins
-systemctl start jenkins
+systemctl enable --now jenkins
 
 #############################################
 # Verify Jenkins Status
@@ -92,7 +95,7 @@ java -version
 
 echo "======================================"
 echo "Jenkins Version"
-jenkins --version || true
+apt list --installed | grep jenkins
 
 echo "======================================"
 echo "Jenkins Installation Completed"
@@ -105,19 +108,22 @@ echo "======================================"
 apt install -y docker.io
 
 #Install Docker Compose plugin
-apt install -y docker-compose-v2
+apt install -y docker-compose-plugin || true
 
-systemctl enable docker
-systemctl start docker
+systemctl enable --now docker
 
 # Allow Jenkins and Ubuntu user to use Docker
 groupadd -f docker
+
 usermod -aG docker jenkins
+id jenkins
 usermod -aG docker ubuntu
-usermod -aG docker ubuntu
+
 
 # Verify Docker
 docker --version
+
+
 
 #############################################
 # Install Python Packages
@@ -169,7 +175,9 @@ unzip -oq awscliv2.zip
 
 rm -rf aws awscliv2.zip
 
-aws --version
+echo "AWS CLI Installed"
+
+aws --version || exit 1
 
 type -p curl >/dev/null || apt install curl -y
 
@@ -185,24 +193,70 @@ apt update
 
 apt install gh -y
 
-JENKINS_PLUGIN_CLI=/usr/lib/jenkins-plugin-manager.jar
+mkdir -p /var/lib/jenkins/plugins
+mkdir -p /var/lib/jenkins/jobs
+mkdir -p /var/lib/jenkins/init.groovy.d
+mkdir -p /var/lib/jenkins/secrets
+mkdir -p /var/lib/jenkins/.aws
+mkdir -p /var/lib/jenkins/workspace
 
-java -jar $JENKINS_PLUGIN_CLI \
-  --plugins \
-  git \
-  github \
-  pipeline-stage-view \
-  workflow-aggregator \
-  terraform \
-  ansible \
-  docker-workflow \
-  blueocean
+chown -R jenkins:jenkins /var/lib/jenkins
+
+
+#############################################
+# Install Jenkins Plugin Manager
+#############################################
+
+wget \
+https://github.com/jenkinsci/plugin-installation-manager-tool/releases/latest/download/jenkins-plugin-manager.jar \
+-O /opt/jenkins-plugin-manager.jar
+
+java -jar /opt/jenkins-plugin-manager.jar \
+    --war /usr/share/java/jenkins.war \
+    --plugin-download-directory /var/lib/jenkins/plugins \
+    --verbose \
+    --plugins \
+        git \
+        github \
+        workflow-aggregator \
+        pipeline-stage-view \
+        docker-workflow \
+        blueocean \
+        ansicolor \
+        credentials \
+        ssh-agent \
+        ssh-slaves \
+        matrix-auth \
+        timestamper \
+        ws-cleanup \
+        terraform \
+        ansible
+
 
 #############################################
 # Restart Jenkins
 #############################################
+chown -R jenkins:jenkins /var/lib/jenkins/plugins
 
+systemctl daemon-reload
 systemctl restart jenkins
+
+echo "Waiting for Jenkins after plugin installation..."
+
+timeout=600
+elapsed=0
+
+until curl -fs http://localhost:8080/login >/dev/null
+do
+    sleep 10
+    elapsed=$((elapsed+10))
+
+    if [ "$elapsed" -ge "$timeout" ]; then
+        echo "Jenkins failed to start after plugin installation."
+        journalctl -u jenkins --no-pager -n 100
+        exit 1
+    fi
+done
 
 echo "========================================"
 
@@ -217,7 +271,7 @@ java -version
 echo "----------------------------------------"
 
 echo "Jenkins Version"
-jenkins --version || true
+apt list --installed | grep jenkins
 
 echo "----------------------------------------"
 
@@ -237,6 +291,7 @@ ansible --version
 echo "----------------------------------------"
 
 echo "AWS CLI Version"
+which aws
 aws --version
 
 echo "========================================"
