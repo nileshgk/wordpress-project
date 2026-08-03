@@ -303,7 +303,7 @@ pipeline {
                 dir('wordpress-devops/ansible') {
                     sshagent(credentials: ['wordpress-ssh-key']) {
                         sh '''
-                        ansible wordpress -a "docker ps"
+                        ansible wordpress -b -a "docker ps"
                         '''
                     }
                 }
