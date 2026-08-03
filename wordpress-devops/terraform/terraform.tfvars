@@ -5,7 +5,7 @@ aws_region = "us-east-1"
 project_name = "wordpress-devops"
 
 # EC2 instance type
-instance_type = "t2.micro"
+instance_type = "t3.small"
 
 # EC2 key pair name
 key_name = "wordpress-key"
