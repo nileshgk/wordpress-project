@@ -254,11 +254,11 @@ pipeline {
         stage('Ping EC2') {
             steps {
                 dir('wordpress-devops/ansible') {
-                    sh '''
-                    ansible wordpress \
-                    -m ping \
-                    -v
-                    '''
+                    sshagent(credentials: ['wordpress-ssh-key']) {
+                        sh '''
+                        ansible wordpress -m ping -v
+                        '''
+                    }
                 }
             }
         }
@@ -282,18 +282,18 @@ pipeline {
                 ]) {
 
                     dir('wordpress-devops/ansible') {
-
-                        sh '''
-                        ansible-playbook playbook.yml \
-                        -e mysql_password=$MYSQL_PASSWORD \
-                        -e mysql_root_password=$MYSQL_ROOT_PASSWORD \
-                        -v
-                        '''
+                        sshagent(credentials: ['wordpress-ssh-key']) {
+                            sh '''
+                            ansible-playbook playbook.yml \
+                            -e mysql_password=$MYSQL_PASSWORD \
+                            -e mysql_root_password=$MYSQL_ROOT_PASSWORD \
+                            -v
+                            '''
+                        }
 
                     }
 
                 }
-
             }
         }
 
@@ -301,10 +301,11 @@ pipeline {
         stage('Verify Containers') {
             steps {
                 dir('wordpress-devops/ansible') {
-                    sh '''
-                    ansible wordpress \
-                    -a "docker ps"
-                    '''
+                    sshagent(credentials: ['wordpress-ssh-key']) {
+                        sh '''
+                        ansible wordpress -a "docker ps"
+                        '''
+                    }
                 }
             }
         }
