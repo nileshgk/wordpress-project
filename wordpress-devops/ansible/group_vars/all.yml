@@ -1,0 +1,6 @@
+---
+# MySQL configuration
+mysql_database: wordpress
+mysql_user: wordpress
+
+
