@@ -37,6 +37,16 @@ resource "aws_security_group" "wordpress" {
 
     cidr_blocks = ["0.0.0.0/0"]
   }
+  
+  ingress {
+    description = "webserver"
+    from_port = 8080
+    to_port = 8080
+    protocol = "tcp"
+
+    cidr_blocks = ["0.0.0.0/0"]
+
+  }
 
   # Allow all outbound traffic
   egress {
