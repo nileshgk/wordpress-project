@@ -3,7 +3,7 @@
   hosts: wordpress
 
   become: yes
-
+  
   roles:
     - docker
     - wordpress

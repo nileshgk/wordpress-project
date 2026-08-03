@@ -23,6 +23,15 @@ Install:
 ✅ SSH Agent
 ✅ Terraform
 
+Create the SSH Credential(run the cmd on terraform dir to create private key: ssh-keygen -t rsa -b 2048 -f wordpress-key )
+
+Fill in:
+Kind: SSH Username with private key
+Scope: Global
+ID: wordpress-ssh-key
+Username: ubuntu
+Private Key: Enter directly
+Paste the contents of your private key (wordpress-key).
 
 # WordPress DevOps Automation using Terraform, Jenkins, Ansible & Docker
 
