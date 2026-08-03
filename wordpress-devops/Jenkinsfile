@@ -364,11 +364,11 @@ pipeline {
         }
 
         // Always clean workspace after execution
-        always {
+        //always {
 
-            cleanWs()
+            //cleanWs()
 
-        }
+        //}
 
     }
 

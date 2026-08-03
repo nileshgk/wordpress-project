@@ -23,7 +23,7 @@ Install:
 ✅ SSH Agent
 ✅ Terraform
 
-Create the SSH Credential(run the cmd on terraform dir to create private key: ssh-keygen -t rsa -b 2048 -f wordpress-key )
+Create the SSH Credential(run the cmd on terraform dir of Jenkins service to create private key: ssh-keygen -t rsa -b 2048 -f Jenkins ) or upload jenkins.pem secrets
 
 Fill in:
 Kind: SSH Username with private key
