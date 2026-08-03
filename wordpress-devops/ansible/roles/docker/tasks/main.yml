@@ -38,6 +38,16 @@
   ansible.builtin.apt:
     update_cache: yes
 
+- name: Stop old Docker services
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: stopped
+  loop:
+    - docker
+    - containerd
+  ignore_errors: yes
+
+
 - name: Remove conflicting Ubuntu Docker packages
   ansible.builtin.apt:
     name:
@@ -48,7 +58,13 @@
       - runc
     state: absent
     purge: yes
-    
+
+
+- name: Clean unused packages
+  ansible.builtin.apt:
+    autoremove: yes
+    autoclean: yes
+
 - name: Install Docker Engine and Docker Compose
   ansible.builtin.apt:
     name:
@@ -65,6 +81,13 @@
     state: present
 
 
+- name: Enable containerd
+  ansible.builtin.service:
+    name: containerd
+    state: started
+    enabled: yes
+
+
 - name: Enable Docker
   ansible.builtin.service:
     name: docker
@@ -77,3 +100,21 @@
     name: ubuntu
     groups: docker
     append: yes
+
+- name: Verify Docker version
+  ansible.builtin.command:
+    cmd: docker --version
+  register: docker_version
+
+
+- name: Verify Docker Compose
+  ansible.builtin.command:
+    cmd: docker compose version
+  register: compose_version
+
+
+- name: Show Docker versions
+  ansible.builtin.debug:
+    msg:
+      - "{{ docker_version.stdout }}"
+      - "{{ compose_version.stdout }}"
