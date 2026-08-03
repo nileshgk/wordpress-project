@@ -1,26 +1,32 @@
 ---
-
 - name: Update apt cache
-  apt:
+  ansible.builtin.apt:
     update_cache: yes
 
-- name: Install Docker Packages
-  apt:
-    name: "{{ docker_packages }}"
+- name: Install Docker Engine
+  ansible.builtin.apt:
+    name: docker.io
     state: present
 
-- name: Install Docker Python SDK
-  pip:
-    name: docker
+- name: Install Python Docker SDK
+  ansible.builtin.apt:
+    name: python3-docker
+    state: present
+
+- name: Install Docker Compose plugin
+  ansible.builtin.apt:
+    name: docker-compose-v2
+    state: present
+  ignore_errors: true
 
 - name: Enable Docker
-  service:
+  ansible.builtin.service:
     name: docker
     state: started
     enabled: yes
 
-- name: Add Ubuntu User to Docker Group
-  user:
+- name: Add ubuntu user to docker group
+  ansible.builtin.user:
     name: ubuntu
     groups: docker
     append: yes
