@@ -1,6 +1,6 @@
 aws_region = "us-east-1"
 
-project_name = "jenkins-terraform-aws"
+project_name = "jenkins-setup"
 
 instance_type = "t3.small"
 

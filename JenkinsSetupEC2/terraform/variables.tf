@@ -9,7 +9,7 @@ variable "aws_region" {
 variable "project_name" {
   description = "Project Name"
   type        = string
-  default     = "jenkins-terraform-aws"
+  default     = "jenkins-setup"
 }
 
 # EC2 Instance Type

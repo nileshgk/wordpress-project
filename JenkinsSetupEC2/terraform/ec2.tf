@@ -47,7 +47,7 @@ resource "aws_instance" "jenkins" {
   }
 
   tags = {
-    Name        = "${var.project_name}-jenkins"
+    Name        = "${var.project_name}-aws"
     Environment = "Dev"
     ManagedBy   = "Terraform"
   }
