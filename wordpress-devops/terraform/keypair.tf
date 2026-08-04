@@ -13,6 +13,13 @@ resource "local_file" "private_key" {
   file_permission = "0400"
 }
 
+# Save public key locally
+resource "local_file" "public_key" {
+  filename        = "${path.module}/keys/wordpress.pub"
+  content         = tls_private_key.wordpress.public_key_openssh
+  file_permission = "0644"
+}
+
 # Upload public key to AWS
 
 resource "aws_key_pair" "wordpress" {

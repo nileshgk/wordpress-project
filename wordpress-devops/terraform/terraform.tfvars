@@ -2,7 +2,7 @@
 aws_region = "us-east-1"
 
 # Project name
-project_name = "wordpress-devops"
+project_name = "wordpress-apps"
 
 # EC2 instance type
 instance_type = "t3.small"
